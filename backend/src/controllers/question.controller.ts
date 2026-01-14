@@ -71,7 +71,7 @@ export const addQuestions = async (req: Request, res: Response) => {
         });
 
         // Contar matérias únicas
-        const uniqueSubjects = new Set(weekQuestions.map((q) => q.subject));
+        const uniqueSubjects = new Set(weekQuestions.map((q: any) => q.subject));
         const currentSubjects = uniqueSubjects.size;
 
         const newCurrentQuestions = goal.currentQuestions + totalQuestions;
@@ -302,14 +302,14 @@ async function recalculateGoal(
       });
 
       const totalQuestions = weekQuestions.reduce(
-        (sum, q) => sum + q.totalQuestions,
+        (sum: number, q: any) => sum + q.totalQuestions,
         0
       );
       const totalHours = weekQuestions.reduce(
-        (sum, q) => sum + (q.hoursStudied || 0),
+        (sum: number, q: any) => sum + (q.hoursStudied || 0),
         0
       );
-      const uniqueSubjects = new Set(weekQuestions.map((q) => q.subject));
+      const uniqueSubjects = new Set(weekQuestions.map((q: any) => q.subject));
 
       const questionsProgress = (totalQuestions / goal.targetQuestions) * 100;
       const hoursProgress = (totalHours / goal.targetHours) * 100;
