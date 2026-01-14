@@ -7,6 +7,6 @@
   "framework": null,
   "regions": ["gru1"],
   "env": {
-    "VITE_API_URL": "https://SEU-APP-BACKEND.onrender.com"
+    "VITE_API_URL": "https://app-estudo.onrender.com"
   }
 }
