@@ -73,7 +73,9 @@ export default function Settings() {
       );
 
       setStats({
-        memberSince: user?.createdAt || new Date().toISOString(),
+        memberSince: user?.createdAt 
+          ? (typeof user.createdAt === 'string' ? user.createdAt : new Date(user.createdAt).toISOString())
+          : new Date().toISOString(),
         totalAccess: parseInt(localStorage.getItem("totalAccess") || "0"),
         studyDays: uniqueDates.size,
       });

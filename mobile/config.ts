@@ -2,9 +2,9 @@
 export const config = {
   // Use seu IP local aqui (descobra com: ipconfig no Windows ou ifconfig no Mac/Linux)
   API_URL: __DEV__
-    ? "http://10.0.2.2:3000" // Android Emulator
-    : // ? 'http://192.168.1.100:3000'  // Dispositivo físico (substitua pelo seu IP)
-      "https://sua-api-producao.com",
+    ? "http://10.0.2.2:3000" // Android Emulator (dev)
+    : // ? 'http://192.168.1.100:3000'  // Dispositivo físico na mesma rede
+      "https://SEU-APP-BACKEND.onrender.com",  // ⚠️ ATUALIZAR após deploy no Render!
 
   // Timeout para requisições HTTP
   TIMEOUT: 10000,

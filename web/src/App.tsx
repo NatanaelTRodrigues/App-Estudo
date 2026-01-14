@@ -16,7 +16,7 @@ import Login from "./pages/Login";
 
 function App() {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
-  const [darkMode, setDarkMode] = useState(() => {
+  const [darkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
     return saved !== null ? saved === "true" : true;
   });

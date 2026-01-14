@@ -1,0 +1,21 @@
+# Configuração para deploy no Render.com
+services:
+  # Backend API
+  - type: web
+    name: app-estudos-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm install && npm run prisma:generate && npm run build
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # Adicione manualmente no Render Dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render gera automaticamente
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000

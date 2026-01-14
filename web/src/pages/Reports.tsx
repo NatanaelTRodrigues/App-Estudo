@@ -221,7 +221,7 @@ export default function Reports() {
               <Chip
                 label={report.classification}
                 color={classInfo.color as any}
-                size="large"
+                size="medium"
                 sx={{ mt: 2, fontSize: "1.2rem", py: 3, px: 2 }}
               />
             </Box>
