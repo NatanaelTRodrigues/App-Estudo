@@ -14,7 +14,7 @@ router.use("/goals", authMiddleware, goalRoutes);
 router.use("/questions", authMiddleware, questionRoutes);
 
 // Rota de teste
-router.get("/test", (req, res) => {
+router.get("/test", (_req, res) => {
   res.json({ message: "API funcionando!" });
 });
 

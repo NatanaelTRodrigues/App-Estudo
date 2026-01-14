@@ -20,6 +20,10 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
+      "http://10.10.16.19:5173",
+      /\.vercel\.app$/,  // Qualquer domínio Vercel
+      /\.onrender\.com$/,  // Qualquer domínio Render
+      "exp://localhost:8081",  // Expo local
     ],
     credentials: true,
   })
@@ -40,8 +44,21 @@ app.use(morgan("dev"));
 // Rotas
 app.use("/api", routes);
 
-// Health check
-app.get("/health", (req, res) => {
+// Health check endpoints (para Render e monitoramento)
+app.get("/", (_req, res) => {
+  res.status(200).json({ 
+    status: "OK", 
+    message: "App Estudos API", 
+    version: "1.0.0",
+    timestamp: new Date().toISOString() 
+  });
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+});
+
+app.get("/api/health", (_req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 

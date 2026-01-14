@@ -14,7 +14,7 @@ export interface AuthRequest extends Request {
 
 export const authMiddleware = (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
