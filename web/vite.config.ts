@@ -31,7 +31,8 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true, // Permite acesso via rede local
     port: 5173,
-    open: true,
+    open: false,
   },
 });

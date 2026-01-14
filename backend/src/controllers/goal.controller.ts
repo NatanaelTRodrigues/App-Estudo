@@ -8,15 +8,21 @@ const prisma = new PrismaClient();
 export const createGoal = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const {
-      weekNumber,
-      year,
-      targetHours,
-      targetSubjects,
-      targetQuestions,
-      startDate,
-      endDate,
-    } = req.body;
+    const { targetHours, targetSubjects, targetQuestions } = req.body;
+
+    // Validação básica
+    if (!targetHours || !targetSubjects || !targetQuestions) {
+      throw new AppError("Todos os campos são obrigatórios", 400);
+    }
+
+    // Calcular semana e ano atuais
+    const now = new Date();
+    const weekNumber = getWeekNumber(now);
+    const year = now.getFullYear();
+
+    // Calcular início e fim da semana
+    const startDate = getStartOfWeek(now);
+    const endDate = getEndOfWeek(now);
 
     // Verificar se já existe meta para essa semana
     const existing = await prisma.goal.findUnique({
@@ -41,8 +47,8 @@ export const createGoal = async (req: Request, res: Response) => {
         targetHours,
         targetSubjects,
         targetQuestions,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate,
+        endDate,
       },
     });
 
@@ -151,4 +157,20 @@ function getWeekNumber(date: Date): number {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+// Helper: Obter início da semana (segunda-feira)
+function getStartOfWeek(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+}
+
+// Helper: Obter fim da semana (domingo)
+function getEndOfWeek(date: Date): Date {
+  const start = getStartOfWeek(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return end;
 }

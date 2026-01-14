@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   Paper,
@@ -14,11 +14,24 @@ import {
   Grid,
   Card,
   CardContent,
+  CircularProgress,
 } from "@mui/material";
-import { Save, Person, Notifications, Palette, Delete } from "@mui/icons-material";
+import {
+  Save,
+  Person,
+  Notifications,
+  Palette,
+  Delete,
+} from "@mui/icons-material";
 import { useStore } from "../store/useStore";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+
+interface UserStats {
+  memberSince: string;
+  totalAccess: number;
+  studyDays: number;
+}
 
 export default function Settings() {
   const { user, setUser, logout } = useStore();
@@ -29,14 +42,89 @@ export default function Settings() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved !== null ? saved === "true" : true;
+  });
   const [emailNotifications, setEmailNotifications] = useState(false);
-  
+
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchUserStats();
+    requestNotificationPermission();
+  }, []);
+
+  const fetchUserStats = async () => {
+    try {
+      setLoadingStats(true);
+      const [questionsRes] = await Promise.all([api.get("/questions")]);
+
+      // Calcular dias únicos de estudo
+      const questions = questionsRes.data.questions || [];
+      const uniqueDates = new Set(
+        questions.map((q: any) => new Date(q.date).toDateString())
+      );
+
+      setStats({
+        memberSince: user?.createdAt || new Date().toISOString(),
+        totalAccess: parseInt(localStorage.getItem("totalAccess") || "0"),
+        studyDays: uniqueDates.size,
+      });
+    } catch (err) {
+      console.error("Erro ao buscar estatísticas:", err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    if ("Notification" in window && Notification.permission === "default") {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        new Notification("👋 Notificações ativadas!", {
+          body: "Você receberá lembretes sobre suas metas de estudo.",
+          icon: "/favicon.ico",
+        });
+      }
+    }
+  };
+
+  const handleDarkModeToggle = (checked: boolean) => {
+    setDarkMode(checked);
+    localStorage.setItem("darkMode", checked.toString());
+    // Recarregar a página para aplicar o tema
+    window.location.reload();
+  };
+
+  const handleNotificationsToggle = async (checked: boolean) => {
+    setNotifications(checked);
+
+    if (checked && "Notification" in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setSuccess("Notificações ativadas com sucesso!");
+        // Testar notificação
+        new Notification("🎓 Sistema de Estudos", {
+          body: "Notificações ativadas! Você receberá lembretes.",
+          icon: "/favicon.ico",
+        });
+      } else {
+        setError(
+          "Permissão de notificação negada. Verifique as configurações do navegador."
+        );
+        setNotifications(false);
+      }
+    }
+
+    localStorage.setItem("notificationsEnabled", checked.toString());
+  };
 
   const handleUpdateProfile = async () => {
     try {
@@ -90,7 +178,7 @@ export default function Settings() {
     const confirm = window.confirm(
       "Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita!"
     );
-    
+
     if (confirm) {
       try {
         setLoading(true);
@@ -241,7 +329,7 @@ export default function Settings() {
               control={
                 <Switch
                   checked={notifications}
-                  onChange={(e) => setNotifications(e.target.checked)}
+                  onChange={(e) => handleNotificationsToggle(e.target.checked)}
                 />
               }
               label="Notificações do Sistema"
@@ -267,10 +355,10 @@ export default function Settings() {
                 control={
                   <Switch
                     checked={darkMode}
-                    onChange={(e) => setDarkMode(e.target.checked)}
+                    onChange={(e) => handleDarkModeToggle(e.target.checked)}
                   />
                 }
-                label="Modo Escuro (Ativo)"
+                label={darkMode ? "Modo Escuro (Ativo)" : "Modo Claro (Ativo)"}
               />
             </Box>
           </Paper>
@@ -285,30 +373,49 @@ export default function Settings() {
               </Typography>
               <Divider sx={{ mb: 2 }} />
 
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Membro desde
-                </Typography>
-                <Typography variant="body1">
-                  {user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString("pt-BR")
-                    : "N/A"}
-                </Typography>
-              </Box>
+              {loadingStats ? (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                  <CircularProgress size={30} />
+                </Box>
+              ) : (
+                <>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Membro desde
+                    </Typography>
+                    <Typography variant="h6">
+                      {stats?.memberSince
+                        ? new Date(stats.memberSince).toLocaleDateString(
+                            "pt-BR",
+                            {
+                              day: "2-digit",
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )
+                        : "N/A"}
+                    </Typography>
+                  </Box>
 
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Total de acessos
-                </Typography>
-                <Typography variant="body1">Em breve</Typography>
-              </Box>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Total de acessos
+                    </Typography>
+                    <Typography variant="h6" color="primary.main">
+                      {stats?.totalAccess || 0} acessos
+                    </Typography>
+                  </Box>
 
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Dias de estudo
-                </Typography>
-                <Typography variant="body1">Em breve</Typography>
-              </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Dias de estudo
+                    </Typography>
+                    <Typography variant="h6" color="success.main">
+                      {stats?.studyDays || 0} dias
+                    </Typography>
+                  </Box>
+                </>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -322,11 +429,7 @@ export default function Settings() {
             <Divider sx={{ mb: 2 }} />
 
             <Box sx={{ display: "flex", gap: 2 }}>
-              <Button
-                variant="outlined"
-                color="warning"
-                onClick={handleLogout}
-              >
+              <Button variant="outlined" color="warning" onClick={handleLogout}>
                 Sair da Conta
               </Button>
 

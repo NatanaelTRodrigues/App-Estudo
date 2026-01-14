@@ -64,6 +64,7 @@ model Question {
   totalQuestions  Int
   correctAnswers  Int
   wrongAnswers    Int
+  hoursStudied    Float    @default(0)
   date            DateTime @default(now())
   weekNumber      Int
   year            Int

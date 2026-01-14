@@ -29,6 +29,11 @@ export default function Home() {
 
         // Verifica se goal existe
         if (data.goal) {
+          const hours = data.goal.currentHours;
+          const h = Math.floor(hours);
+          const m = Math.round((hours - h) * 60);
+          const formattedHours = m > 0 ? `${h}h ${m}min` : `${h}h`;
+
           setDashboardData({
             weekProgress: {
               hours: data.goal.currentHours,
@@ -42,11 +47,13 @@ export default function Home() {
                 type: data.goal.progress >= 70 ? "success" : "warning",
                 message: `Você está em ${data.goal.progress.toFixed(
                   1
-                )}% da meta semanal - ${data.goal.currentHours}h/${
+                )}% da meta semanal - ${formattedHours}/${
                   data.goal.targetHours
                 }h, ${data.goal.currentQuestions}/${
                   data.goal.targetQuestions
-                } questões`,
+                } questões, ${data.goal.currentSubjects}/${
+                  data.goal.targetSubjects
+                } matérias`,
               },
             ],
             recentPerformance: [],
@@ -147,7 +154,12 @@ export default function Home() {
                 Horas de Estudo
               </Typography>
               <Typography variant="h5" component="div">
-                {dashboardData?.weekProgress.hours || 0}h
+                {(() => {
+                  const hours = dashboardData?.weekProgress.hours || 0;
+                  const h = Math.floor(hours);
+                  const m = Math.round((hours - h) * 60);
+                  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                })()}
               </Typography>
               <LinearProgress
                 variant="determinate"

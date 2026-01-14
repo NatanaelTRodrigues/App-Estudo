@@ -8,7 +8,13 @@ const prisma = new PrismaClient();
 export const addQuestions = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const { subject, totalQuestions, correctAnswers, wrongAnswers } = req.body;
+    const {
+      subject,
+      totalQuestions,
+      correctAnswers,
+      wrongAnswers,
+      hoursStudied,
+    } = req.body;
 
     if (
       !subject ||
@@ -23,6 +29,7 @@ export const addQuestions = async (req: Request, res: Response) => {
     const now = new Date();
     const weekNumber = getWeekNumber(now);
     const year = now.getFullYear();
+    const hours = hoursStudied ? parseFloat(hoursStudied) : 0;
 
     const question = await prisma.question.create({
       data: {
@@ -31,6 +38,7 @@ export const addQuestions = async (req: Request, res: Response) => {
         totalQuestions,
         correctAnswers,
         wrongAnswers,
+        hoursStudied: hours,
         accuracy,
         weekNumber,
         year,
@@ -50,12 +58,29 @@ export const addQuestions = async (req: Request, res: Response) => {
       });
 
       if (goal) {
+        // Buscar todas as questões da semana para contar matérias únicas
+        const weekQuestions = await prisma.question.findMany({
+          where: {
+            userId,
+            weekNumber,
+            year,
+          },
+          select: {
+            subject: true,
+          },
+        });
+
+        // Contar matérias únicas
+        const uniqueSubjects = new Set(weekQuestions.map((q) => q.subject));
+        const currentSubjects = uniqueSubjects.size;
+
         const newCurrentQuestions = goal.currentQuestions + totalQuestions;
+        const newCurrentHours = goal.currentHours + hours;
+
         const questionsProgress =
           (newCurrentQuestions / goal.targetQuestions) * 100;
-        const hoursProgress = (goal.currentHours / goal.targetHours) * 100;
-        const subjectsProgress =
-          (goal.currentSubjects / goal.targetSubjects) * 100;
+        const hoursProgress = (newCurrentHours / goal.targetHours) * 100;
+        const subjectsProgress = (currentSubjects / goal.targetSubjects) * 100;
         const totalProgress =
           (hoursProgress + subjectsProgress + questionsProgress) / 3;
 
@@ -63,6 +88,8 @@ export const addQuestions = async (req: Request, res: Response) => {
           where: { id: goal.id },
           data: {
             currentQuestions: newCurrentQuestions,
+            currentHours: newCurrentHours,
+            currentSubjects: currentSubjects,
             progress: totalProgress,
           },
         });
@@ -136,6 +163,10 @@ export const getQuestionStats = async (req: Request, res: Response) => {
         (sum: number, q: any) => sum + q.wrongAnswers,
         0
       ),
+      totalHours: questions.reduce(
+        (sum: number, q: any) => sum + (q.hoursStudied || 0),
+        0
+      ),
       averageAccuracy:
         questions.length > 0
           ? questions.reduce((sum: number, q: any) => sum + q.accuracy, 0) /
@@ -147,12 +178,14 @@ export const getQuestionStats = async (req: Request, res: Response) => {
             total: 0,
             correct: 0,
             wrong: 0,
+            hours: 0,
             accuracy: 0,
           };
         }
         acc[q.subject].total += q.totalQuestions;
         acc[q.subject].correct += q.correctAnswers;
         acc[q.subject].wrong += q.wrongAnswers;
+        acc[q.subject].hours += q.hoursStudied || 0;
         acc[q.subject].accuracy =
           (acc[q.subject].correct / acc[q.subject].total) * 100;
         return acc;
@@ -164,6 +197,141 @@ export const getQuestionStats = async (req: Request, res: Response) => {
     throw new AppError("Erro ao buscar estatísticas", 500);
   }
 };
+
+// Atualizar questão
+export const updateQuestion = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const {
+      subject,
+      totalQuestions,
+      correctAnswers,
+      wrongAnswers,
+      hoursStudied,
+    } = req.body;
+
+    // Verificar se a questão pertence ao usuário
+    const existingQuestion = await prisma.question.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existingQuestion) {
+      throw new AppError("Questão não encontrada", 404);
+    }
+
+    const accuracy = (correctAnswers / totalQuestions) * 100;
+    const hours = hoursStudied ? parseFloat(hoursStudied) : 0;
+
+    const question = await prisma.question.update({
+      where: { id },
+      data: {
+        subject,
+        totalQuestions,
+        correctAnswers,
+        wrongAnswers,
+        hoursStudied: hours,
+        accuracy,
+      },
+    });
+
+    // Recalcular goal
+    await recalculateGoal(
+      userId,
+      existingQuestion.weekNumber,
+      existingQuestion.year
+    );
+
+    res.json({ question });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("Erro ao atualizar questão", 500);
+  }
+};
+
+// Deletar questão
+export const deleteQuestion = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+
+    const existingQuestion = await prisma.question.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existingQuestion) {
+      throw new AppError("Questão não encontrada", 404);
+    }
+
+    await prisma.question.delete({ where: { id } });
+
+    // Recalcular goal
+    await recalculateGoal(
+      userId,
+      existingQuestion.weekNumber,
+      existingQuestion.year
+    );
+
+    res.json({ message: "Questão deletada com sucesso" });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("Erro ao deletar questão", 500);
+  }
+};
+
+// Função auxiliar para recalcular goal
+async function recalculateGoal(
+  userId: string,
+  weekNumber: number,
+  year: number
+) {
+  try {
+    const goal = await prisma.goal.findUnique({
+      where: {
+        userId_weekNumber_year: {
+          userId,
+          weekNumber,
+          year,
+        },
+      },
+    });
+
+    if (goal) {
+      const weekQuestions = await prisma.question.findMany({
+        where: { userId, weekNumber, year },
+      });
+
+      const totalQuestions = weekQuestions.reduce(
+        (sum, q) => sum + q.totalQuestions,
+        0
+      );
+      const totalHours = weekQuestions.reduce(
+        (sum, q) => sum + (q.hoursStudied || 0),
+        0
+      );
+      const uniqueSubjects = new Set(weekQuestions.map((q) => q.subject));
+
+      const questionsProgress = (totalQuestions / goal.targetQuestions) * 100;
+      const hoursProgress = (totalHours / goal.targetHours) * 100;
+      const subjectsProgress =
+        (uniqueSubjects.size / goal.targetSubjects) * 100;
+      const totalProgress =
+        (hoursProgress + subjectsProgress + questionsProgress) / 3;
+
+      await prisma.goal.update({
+        where: { id: goal.id },
+        data: {
+          currentQuestions: totalQuestions,
+          currentHours: totalHours,
+          currentSubjects: uniqueSubjects.size,
+          progress: totalProgress,
+        },
+      });
+    }
+  } catch (error) {
+    // Silenciosamente ignora erros de recalculação
+  }
+}
 
 function getWeekNumber(date: Date): number {
   const d = new Date(

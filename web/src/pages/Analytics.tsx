@@ -27,6 +27,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import api from "../services/api";
+import { formatHours } from "../utils/timeCalculations";
 
 interface SubjectStats {
   [key: string]: {
@@ -34,6 +35,7 @@ interface SubjectStats {
     correct: number;
     wrong: number;
     accuracy: number;
+    hours?: number;
   };
 }
 
@@ -51,7 +53,7 @@ export default function Analytics() {
     try {
       setLoading(true);
       const { data } = await api.get("/questions/stats");
-      
+
       setStats(data.stats);
 
       // Transformar dados de matérias para o gráfico
@@ -72,12 +74,21 @@ export default function Analytics() {
     }
   };
 
-  const COLORS = ["#90caf9", "#4caf50", "#ff9800", "#9c27b0", "#f44336", "#00bcd4"];
+  const COLORS = [
+    "#90caf9",
+    "#4caf50",
+    "#ff9800",
+    "#9c27b0",
+    "#f44336",
+    "#00bcd4",
+  ];
 
   const getClassification = (accuracy: number) => {
-    if (accuracy >= 90) return { label: "Ótimo", emoji: "🌟", color: "#4caf50" };
+    if (accuracy >= 90)
+      return { label: "Ótimo", emoji: "🌟", color: "#4caf50" };
     if (accuracy >= 75) return { label: "Bom", emoji: "👍", color: "#2196f3" };
-    if (accuracy >= 60) return { label: "Regular", emoji: "😐", color: "#ff9800" };
+    if (accuracy >= 60)
+      return { label: "Regular", emoji: "😐", color: "#ff9800" };
     return { label: "Ruim", emoji: "😔", color: "#f44336" };
   };
 
@@ -95,9 +106,16 @@ export default function Analytics() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <Typography variant="h4">📊 Analytics</Typography>
-        
+
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>Período</InputLabel>
           <Select
@@ -152,7 +170,7 @@ export default function Analytics() {
                   </Typography>
                 </Box>
               </Grid>
-              
+
               <Grid item xs={6} md={3}>
                 <Box sx={{ textAlign: "center" }}>
                   <Typography variant="h3" color="success.main">
@@ -182,6 +200,17 @@ export default function Analytics() {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Matérias
+                  </Typography>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={12}>
+                <Box sx={{ textAlign: "center", mt: 2 }}>
+                  <Typography variant="h3" color="info.main">
+                    {stats?.totalHours ? formatHours(stats.totalHours) : "0min"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tempo Total de Estudo
                   </Typography>
                 </Box>
               </Grid>
