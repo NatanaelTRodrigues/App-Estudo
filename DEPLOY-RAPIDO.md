@@ -12,7 +12,7 @@
    - **Name**: `app-estudos-backend`
    - **Root Directory**: `backend`
    - **Environment**: `Node`
-   - **Build Command**: `npm install && npm run prisma:generate && npm run build`
+   - **Build Command**: `npm install && npx prisma generate && npm run build`
    - **Start Command**: `npm start`
    - **Plan**: `Free`
 
